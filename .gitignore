@@ -1,0 +1,7 @@
+# built binary (go build -o macshare)
+/macshare
+*.exe
+
+.DS_Store
+__MACOSX
+*.part

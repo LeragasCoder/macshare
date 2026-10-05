@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacShare</title>
+<style>
+  :root {
+    --bg: #f1f2f4; --panel: #ffffff; --ink: #15181d; --mute: #667085; --line: #e2e5e9; --soft: #f6f7f9;
+    --send: #2355f0; --recv: #0c9a88; --danger: #c93636; --ok: #1f9d55;
+    --r-panel: 10px; --r-ctl: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1114; --panel: #171a1f; --ink: #e8ebf0; --mute: #8992a3; --line: #262b33; --soft: #1c2026;
+      --send: #6b93ff; --recv: #34cdb8; --danger: #ef7070; --ok: #4cc27f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 -apple-system, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .brand { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+  .status { display: flex; align-items: center; gap: 8px; color: var(--mute); font-size: 13px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+  .layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; max-width: 1240px; margin: 0 auto; padding: 20px 24px 56px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .col { display: grid; gap: 20px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-panel); padding: 18px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; font-weight: 650; letter-spacing: -0.005em; }
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .head h2 { margin: 0; }
+  .hint { color: var(--mute); font-size: 12.5px; margin: 10px 0 0; }
+
+  button { font: inherit; cursor: pointer; border-radius: var(--r-ctl); padding: 6px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button:hover { background: var(--soft); }
+  button.primary { background: var(--send); border-color: var(--send); color: #fff; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.text { border: 0; background: none; padding: 4px 6px; color: var(--mute); }
+  button.text:hover { color: var(--ink); background: none; }
+  button.danger { color: var(--danger); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--send); outline-offset: 2px; }
+  select, input[type=text] { font: inherit; padding: 6px 8px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--panel); color: var(--ink); width: 100%; }
+
+  /* connect */
+  .qrbox { display: grid; place-items: center; background: #fff; border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px; }
+  .qrbox img { width: 100%; max-width: 240px; height: auto; display: block; image-rendering: pixelated; }
+  .urlrow { display: flex; gap: 8px; margin: 12px 0 10px; }
+  .urlrow input { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; direction: ltr; }
+  label.field { display: grid; gap: 4px; color: var(--mute); font-size: 12.5px; }
+
+  .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .setting:first-of-type { border-top: 0; padding-top: 0; }
+  .setting small { display: block; color: var(--mute); font-size: 12.5px; }
+  .path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; color: var(--mute); word-break: break-all; margin-top: 4px; }
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+  .switch i { position: absolute; inset: 0; background: var(--line); border-radius: 11px; transition: background .15s; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+  .switch input:checked + i { background: var(--send); }
+  .switch input:checked + i::after { transform: translateX(16px); }
+  .switch input:focus-visible + i { outline: 2px solid var(--send); outline-offset: 2px; }
+
+  /* monitor */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-ctl); overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 4px 10px; color: var(--mute); background: none; }
+  .seg button.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+  .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+  .ro { border-left: 3px solid var(--send); padding-left: 12px; }
+  .ro.recv { border-color: var(--recv); }
+  .ro .lbl { color: var(--mute); font-size: 12.5px; }
+  .ro .val { font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -0.03em; }
+  .ro .val small { font-size: 14px; font-weight: 500; color: var(--mute); letter-spacing: 0; margin-left: 4px; }
+  .ro .sub { color: var(--mute); font-size: 12.5px; }
+  canvas { width: 100%; height: 190px; display: block; }
+  .legend { display: flex; gap: 16px; margin-top: 6px; color: var(--mute); font-size: 12.5px; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+  /* transfers */
+  .empty { color: var(--mute); padding: 10px 0; }
+  .tr { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; gap: 14px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+  .tr:first-child { border-top: 0; }
+  .tr .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tr .meta { color: var(--mute); font-size: 12.5px; }
+  .bar { height: 6px; background: var(--soft); border-radius: 3px; overflow: hidden; margin: 6px 0 4px; border: 1px solid var(--line); }
+  .bar i { display: block; height: 100%; background: var(--send); }
+  .tr.receive .bar i { background: var(--recv); }
+  .bar.ind i { width: 30% !important; animation: slide 1.1s linear infinite; }
+  @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .bar.ind i { animation: none; } }
+  .tr .spd { text-align: right; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .tr .spd small { display: block; font-size: 12.5px; font-weight: 400; color: var(--mute); letter-spacing: 0; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11.5px; font-weight: 600; margin-right: 6px; color: #fff; background: var(--send); }
+  .tag.receive { background: var(--recv); }
+  .tag.test { background: var(--mute); }
+  @media (max-width: 640px) { .tr { grid-template-columns: 1fr auto; } .tr .spd { grid-column: 1; text-align: left; } }
+
+  /* shared items */
+  .item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .meta { color: var(--mute); font-size: 12.5px; white-space: nowrap; }
+  .actions { display: flex; gap: 8px; margin-top: 12px; }
+
+  /* tables */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--mute); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.nm { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  th.r, td.r { text-align: right; }
+  tr:last-child td { border-bottom: 0; }
+  .st-aborted { color: var(--danger); }
+
+  .tests .t { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .tests .t:first-child { border-top: 0; padding-top: 0; }
+  .tests .t div { display: flex; justify-content: space-between; gap: 8px; }
+  .tests .t span:first-child { color: var(--mute); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">MacShare</div>
+  <div class="status"><span class="dot"></span><span id="listen">Starting…</span></div>
+</header>
+
+<div class="layout">
+  <div class="col">
+    <section class="panel">
+      <h2>Connect a phone</h2>
+      <div class="qrbox"><img id="qr" alt="QR code with the phone URL" width="240" height="240"></div>
+      <div class="urlrow">
+        <input type="text" id="url" readonly aria-label="Phone URL">
+        <button id="copy">Copy</button>
+      </div>
+      <label class="field">Network interface
+        <select id="ip"></select>
+      </label>
+      <p class="hint">The phone and this Mac must be on the same network (shared Wi-Fi or the phone's hotspot). Traffic stays on the local network.</p>
+      <div class="actions"><button id="regen">New access key</button></div>
+    </section>
+
+    <section class="panel">
+      <h2>Settings</h2>
+      <div class="setting">
+        <div>Accept uploads from phone<small>Turn off to make this Mac send-only.</small></div>
+        <label class="switch"><input type="checkbox" id="uploads" aria-label="Accept uploads from phone"><i></i></label>
+      </div>
+      <div class="setting" style="display:block">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span>Save received files to</span>
+          <span><button class="text" id="chdir">Change</button><button class="text" id="reveal">Show in Finder</button></span>
+        </div>
+        <div class="path" id="recvDir"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Speed tests</h2>
+      <div class="tests" id="tests"></div>
+      <p class="hint">Run a test from the phone page. It measures the raw network link without touching storage.</p>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel">
+      <div class="head">
+        <h2>Live throughput</h2>
+        <div class="seg" role="group" aria-label="Speed unit">
+          <button id="u-MBps">MB/s</button><button id="u-Mbps">Mbit/s</button>
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="ro send"><div class="lbl">Mac to phone</div><div class="val num" id="sendNow">0.0</div><div class="sub num" id="sendSub"></div></div>
+        <div class="ro recv"><div class="lbl">Phone to Mac</div><div class="val num" id="recvNow">0.0</div><div class="sub num" id="recvSub"></div></div>
+      </div>
+      <canvas id="graph" role="img" aria-label="Throughput over the last 60 seconds"></canvas>
+      <div class="legend"><span><i style="background:var(--send)"></i>Mac to phone</span><span><i style="background:var(--recv)"></i>Phone to Mac</span><span>Last 60 seconds</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Active transfers</h2></div>
+      <div id="active"></div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Shared with phone</h2><button class="text danger" id="clearAll">Remove all</button></div>
+      <div id="items"></div>
+      <div class="actions"><button class="primary" id="addFiles">Add files…</button><button id="addFolder">Add folder…</button></div>
+      <p class="hint">Folders are sent as an uncompressed zip, streamed on the fly.</p>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>History</h2><button class="text" id="clearHist">Clear</button></div>
+      <div class="scroll" id="history"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const post = u => fetch(u, { method: 'POST', headers: { 'X-Req': '1' } });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let pressing = false;
+function put(id, html) { const el = $(id); if (el._h !== html) { el._h = html; el.innerHTML = html; } }
+let S = null, selIP = null, unit = localStorage.getItem('unit') || 'MBps', lastIPs = '', lastUrl = '', baseUrl = '';
+
+function bytes(n) {
+  if (n < 0) return 'unknown';
+  const u = ['B','KB','MB','GB','TB']; let i = 0;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return (i ? n.toFixed(n >= 100 ? 0 : 1) : n) + ' ' + u[i];
+}
+function speedVal(bps) { return unit === 'Mbps' ? bps * 8 / 1e6 : bps / 1e6; }
+function speedUnit() { return unit === 'Mbps' ? 'Mbit/s' : 'MB/s'; }
+function speed(bps) { const v = speedVal(bps); return v.toFixed(v >= 100 ? 0 : 1) + ' ' + speedUnit(); }
+function dur(s) {
+  s = Math.round(s); if (s < 60) return s + 's';
+  const m = Math.floor(s / 60); if (m < 60) return m + 'm ' + (s % 60) + 's';
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+}
+function clock(ms) { return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+
+function setUnit(u) {
+  unit = u; localStorage.setItem('unit', u);
+  $('u-MBps').classList.toggle('on', u === 'MBps');
+  $('u-Mbps').classList.toggle('on', u === 'Mbps');
+  if (S) render();
+}
+
+function render() {
+  const st = S.stats;
+  $('listen').textContent = `${S.host} is listening on port ${S.port}`;
+
+  const key = JSON.stringify(S.ips);
+  if (key !== lastIPs) {
+    lastIPs = key;
+    $('ip').innerHTML = S.ips.map(i => `<option value="${i.ip}">${i.ip} (${i.iface})</option>`).join('');
+    if (!S.ips.some(i => i.ip === selIP)) selIP = S.ips.length ? S.ips[0].ip : null;
+    $('ip').value = selIP;
+  }
+  baseUrl = selIP ? `http://${selIP}:${S.port}/${S.token}/` : '';
+  if (baseUrl !== lastUrl) {
+    lastUrl = baseUrl;
+    $('url').value = baseUrl || 'Not connected to any network';
+    if (baseUrl) $('qr').src = '/qr.png?u=' + encodeURIComponent(baseUrl);
+  }
+
+  if (document.activeElement !== $('uploads')) $('uploads').checked = S.uploads;
+  $('recvDir').textContent = S.recvDir;
+
+  // readouts
+  const rv = (id, bps) => { const v = speedVal(bps); $(id).innerHTML = `${v.toFixed(v >= 100 ? 0 : 1)}<small>${speedUnit()}</small>`; };
+  rv('sendNow', st.sendNow); rv('recvNow', st.recvNow);
+  $('sendSub').textContent = `Peak ${speed(st.peakSend)}, total ${bytes(st.totalSent)}`;
+  $('recvSub').textContent = `Peak ${speed(st.peakRecv)}, total ${bytes(st.totalRecv)}`;
+  draw();
+
+  // active
+  put('active', st.active.length ? st.active.map(t => {
+    const known = t.total > 0;
+    const pct = known ? Math.min(99.9, t.done / t.total * 100) : 0;
+    const tag = t.kind === 'test' ? '<span class="tag test">Test</span>' : `<span class="tag ${t.dir}">${t.dir === 'send' ? 'Send' : 'Receive'}</span>`;
+    const detail = known ? `${bytes(t.done)} of ${bytes(t.total)}${t.eta >= 0 ? ', ' + dur(t.eta) + ' left' : ''}` : `${bytes(t.done)} received`;
+    return `<div class="tr ${t.dir}">
+      <div><div class="nm">${tag}${esc(t.name)}</div>
+        <div class="bar ${known ? '' : 'ind'}"><i style="width:${pct}%"></i></div>
+        <div class="meta num">${detail}, ${esc(t.peer)}</div></div>
+      <div class="spd num">${speed(t.speed)}<small>peak ${speed(t.peak)}</small></div>
+      <button class="text danger" data-cancel="${t.id}">Cancel</button></div>`;
+  }).join('') : '<div class="empty">No transfers running.</div>');
+
+  // items
+  put('items', S.items.length ? S.items.map(it => `<div class="item">
+      <span class="nm">${esc(it.name)}${it.isDir ? ' (folder)' : ''}</span>
+      <span class="meta num">${bytes(it.size)}, ${it.downloads} download${it.downloads === 1 ? '' : 's'}</span>
+      ${it.isDir ? '' : `<button class="text" data-copy="${it.id}">Copy link</button>`}
+      <button class="text danger" data-remove="${it.id}">Remove</button></div>`).join('')
+    : '<div class="empty">Nothing shared yet. Add files or a folder to make them available on the phone.</div>');
+
+  // history
+  put('history', st.history.length ? `<table class="num"><thead><tr>
+      <th>Time</th><th>Direction</th><th>Name</th><th class="r">Size</th><th class="r">Average</th><th class="r">Peak</th><th class="r">Duration</th><th>Status</th></tr></thead><tbody>` +
+    st.history.map(t => `<tr><td>${clock(t.started)}</td><td>${t.dir === 'send' ? 'Sent' : 'Received'}</td><td class="nm" title="${esc(t.name)}">${esc(t.name)}</td>
+      <td class="r">${bytes(t.done)}</td><td class="r">${speed(t.avg)}</td><td class="r">${speed(t.peak)}</td><td class="r">${dur((t.ended - t.started) / 1000)}</td>
+      <td class="${t.state === 'aborted' ? 'st-aborted' : ''}">${t.state === 'done' ? 'Completed' : 'Interrupted'}</td></tr>`).join('') + '</tbody></table>'
+    : '<div class="empty">Finished transfers appear here.</div>');
+
+  // tests
+  put('tests', S.tests.length ? S.tests.slice(0, 3).map(t => `<div class="t num">
+      <div><span>${t.at}, ${esc(t.peer)}</span><span>${t.streams} stream${t.streams === 1 ? '' : 's'}</span></div>
+      <div><span>Download</span><b>${speed(t.down)}</b></div>
+      <div><span>Upload</span><b>${speed(t.up)}</b></div>
+      <div><span>Latency</span><b>${t.pingMs.toFixed(0)} ms, jitter ${t.jitterMs.toFixed(1)} ms</b></div></div>`).join('')
+    : '<div class="empty">No tests yet.</div>');
+}
+
+function draw() {
+  const c = $('graph'), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue(n).trim();
+  const N = 120, L = 46, R = 6, T = 8, B = 20, pw = w - L - R, ph = h - T - B;
+  const send = S.stats.graphSend.map(speedVal), recv = S.stats.graphRecv.map(speedVal);
+  const max = Math.max(1, ...send, ...recv) * 1.1;
+  const mag = Math.pow(10, Math.floor(Math.log10(max)));
+  let top = mag * 10; for (const k of [1, 2, 5, 10]) if (k * mag >= max) { top = k * mag; break; }
+  g.font = '11px -apple-system, system-ui, sans-serif'; g.textBaseline = 'middle';
+  for (let i = 0; i <= 4; i++) {
+    const y = T + ph - ph * i / 4;
+    g.strokeStyle = col('--line'); g.lineWidth = 1; g.beginPath(); g.moveTo(L, y + .5); g.lineTo(w - R, y + .5); g.stroke();
+    g.fillStyle = col('--mute'); g.textAlign = 'right'; g.fillText((top * i / 4).toFixed(top < 10 ? 1 : 0), L - 8, y);
+  }
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = col('--mute'); g.fillText('60s ago', L, h - 4); g.textAlign = 'right'; g.fillText('now', w - R, h - 4);
+  const line = (data, color) => {
+    if (data.length < 2) return;
+    const pt = (v, i) => [L + (i + N - data.length) / (N - 1) * pw, T + ph - Math.min(v / top, 1) * ph];
+    g.beginPath(); data.forEach((v, i) => { const [x, y] = pt(v, i); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = color; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+    const [lx] = pt(0, data.length - 1), [fx] = pt(0, 0);
+    g.lineTo(lx, T + ph); g.lineTo(fx, T + ph); g.closePath();
+    g.globalAlpha = .12; g.fillStyle = color; g.fill(); g.globalAlpha = 1;
+  };
+  line(recv, col('--recv')); line(send, col('--send'));
+}
+
+async function refresh() {
+  if (pressing) return;
+  try { S = await (await fetch('/api/state', { cache: 'no-store' })).json(); render(); } catch (e) {}
+}
+
+$('u-MBps').onclick = () => setUnit('MBps');
+$('u-Mbps').onclick = () => setUnit('Mbps');
+$('ip').onchange = e => { selIP = e.target.value; lastUrl = ''; render(); };
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText(baseUrl); $('copy').textContent = 'Copied'; setTimeout(() => $('copy').textContent = 'Copy', 1200); } catch (e) { $('url').select(); } };
+$('regen').onclick = async () => { if (confirm('Generate a new access key? Phones using the current link will lose access.')) { await post('/api/token/regen'); refresh(); } };
+$('uploads').onchange = async e => { await post('/api/uploads?on=' + (e.target.checked ? 1 : 0)); refresh(); };
+$('chdir').onclick = async () => { await post('/api/recvdir/pick'); refresh(); };
+$('reveal').onclick = () => post('/api/reveal');
+$('addFiles').onclick = async () => { await post('/api/pick?kind=file'); refresh(); };
+$('addFolder').onclick = async () => { await post('/api/pick?kind=folder'); refresh(); };
+$('clearAll').onclick = async () => { await post('/api/clear'); refresh(); };
+$('clearHist').onclick = async () => { await post('/api/history/clear'); refresh(); };
+document.addEventListener('click', async e => {
+  const d = e.target.dataset || {};
+  if (d.cancel) { await post('/api/cancel?id=' + d.cancel); refresh(); }
+  else if (d.remove) { await post('/api/remove?id=' + d.remove); refresh(); }
+  else if (d.copy) { try { await navigator.clipboard.writeText(baseUrl + 'd/' + d.copy); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy link', 1200); } catch (x) {} }
+});
+document.addEventListener('pointerdown', () => { pressing = true; });
+function release() { setTimeout(() => { pressing = false; }, 0); }
+document.addEventListener('pointerup', release);
+document.addEventListener('pointercancel', release);
+window.addEventListener('resize', () => S && draw());
+
+setUnit(unit);
+refresh();
+setInterval(refresh, 500);
+</script>
+</body>
+</html>

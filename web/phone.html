@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>MacShare</title>
+<style>
+  :root {
+    --bg: #f1f2f4; --panel: #fff; --ink: #15181d; --mute: #667085; --line: #e2e5e9; --soft: #f6f7f9;
+    --send: #2355f0; --recv: #0c9a88; --danger: #c93636; --ok: #1f9d55;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1114; --panel:#171a1f; --ink:#e8ebf0; --mute:#8992a3; --line:#262b33; --soft:#1c2026; --send:#6b93ff; --recv:#34cdb8; --danger:#ef7070; --ok:#4cc27f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
+  .num { font-variant-numeric: tabular-nums; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header b { font-size: 17px; letter-spacing: -0.01em; }
+  header small { display: flex; align-items: center; gap: 6px; color: var(--mute); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .dot.off { background: var(--danger); }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 14px 48px; display: grid; gap: 14px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .head h2 { margin: 0; }
+  .mute { color: var(--mute); font-size: 13px; }
+  button, .btn { font: inherit; display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: 9px 16px; background: var(--panel); color: var(--ink); text-decoration: none; cursor: pointer; text-align: center; }
+  .primary { background: var(--send); border-color: var(--send); color: #fff; font-weight: 600; }
+  button:disabled, .disabled { opacity: .5; pointer-events: none; }
+  button.text { border: 0; background: none; color: var(--mute); padding: 4px 8px; }
+  button:focus-visible, .btn:focus-visible, select:focus-visible { outline: 2px solid var(--send); outline-offset: 2px; }
+  select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 4px 10px; background: none; color: var(--mute); font-size: 13px; }
+  .seg button.on { background: var(--soft); color: var(--ink); font-weight: 600; }
+
+  .row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; }
+  .row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .sz { color: var(--mute); font-size: 13px; white-space: nowrap; }
+  .empty { color: var(--mute); padding: 4px 0; }
+
+  .bar { height: 6px; background: var(--soft); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; margin: 6px 0 4px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--send); }
+  .bar.recv i { background: var(--recv); }
+  .job { padding: 10px 0; border-top: 1px solid var(--line); }
+  .job:first-child { border-top: 0; }
+  .job .top { display: flex; justify-content: space-between; gap: 10px; }
+  .job .top span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job .info { display: flex; justify-content: space-between; color: var(--mute); font-size: 13px; }
+  .live { border-color: var(--send); }
+  .live .sp { font-weight: 650; }
+
+  .gauge { text-align: center; padding: 6px 0 2px; }
+  .gauge .v { font-size: 56px; line-height: 1.05; font-weight: 600; letter-spacing: -0.03em; }
+  .gauge .u { color: var(--mute); }
+  .phase { text-align: center; color: var(--mute); margin-bottom: 6px; min-height: 1.5em; }
+  .opts { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin: 12px 0; color: var(--mute); font-size: 13px; }
+  .opts label { display: flex; align-items: center; gap: 6px; }
+  #stBtn { width: 100%; padding: 12px; }
+  .res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .res div { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+  .res small { display: block; color: var(--mute); font-size: 12px; }
+  .res b { font-size: 17px; letter-spacing: -0.01em; }
+  .res em { display: block; font-style: normal; color: var(--mute); font-size: 12px; }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div><b>MacShare</b></div>
+  <small><span class="dot" id="conn"></span><span id="host">Connecting…</span></small>
+</header>
+
+<main>
+  <section class="live" id="liveBox" hidden>
+    <h2>Live transfers</h2>
+    <div id="live"></div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>Files from Mac</h2>
+      <div class="seg" role="group" aria-label="Speed unit"><button id="u-MBps">MB/s</button><button id="u-Mbps">Mbit/s</button></div>
+    </div>
+    <div id="items"><div class="empty">Loading…</div></div>
+    <div style="margin-top:12px"><button id="all" hidden>Save all</button></div>
+    <p class="mute" style="margin:10px 0 0">Downloads are handled by your browser. Watch the live speed above or on the Mac.</p>
+  </section>
+
+  <section>
+    <h2>Send to Mac</h2>
+    <label class="btn primary" for="pick" id="pickBtn">Choose files</label>
+    <input id="pick" type="file" multiple>
+    <p class="mute" id="upNote" style="margin:10px 0 0"></p>
+    <div id="jobs" style="margin-top:8px"></div>
+  </section>
+
+  <section>
+    <h2>Speed test</h2>
+    <div class="gauge num"><span class="v" id="gv">0.0</span> <span class="u" id="gu">MB/s</span></div>
+    <div class="phase" id="phase">Measures the Wi-Fi link between this phone and the Mac. No files are written.</div>
+    <div class="bar" style="margin:0 0 4px"><i id="gbar"></i></div>
+    <div class="opts">
+      <label>Streams <select id="streams"><option>1</option><option>2</option><option>4</option><option>8</option></select></label>
+      <label>Duration <select id="dur"><option value="5">5 s</option><option value="8" selected>8 s</option><option value="15">15 s</option></select></label>
+    </div>
+    <button class="primary" id="stBtn">Start test</button>
+    <div class="res num" id="res" hidden>
+      <div><small>Latency</small><b id="rPing">-</b><em id="rJit"></em></div>
+      <div><small>Download</small><b id="rDn">-</b><em id="rDnP"></em></div>
+      <div><small>Upload</small><b id="rUp">-</b><em id="rUpP"></em></div>
+    </div>
+    <p class="mute" style="margin:12px 0 0">Tip: a single stream matches a normal file transfer. If several streams are much faster, the limit is per connection, not the link.</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let unit = localStorage.getItem('unit') || 'MBps', items = [], uploadsOn = true;
+
+function bytes(n) {
+  if (n < 0) return 'unknown';
+  const u = ['B','KB','MB','GB','TB']; let i = 0;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return (i ? n.toFixed(n >= 100 ? 0 : 1) : n) + ' ' + u[i];
+}
+const sv = bps => unit === 'Mbps' ? bps * 8 / 1e6 : bps / 1e6;
+const su = () => unit === 'Mbps' ? 'Mbit/s' : 'MB/s';
+const spd = bps => { const v = sv(bps); return v.toFixed(v >= 100 ? 0 : 1) + ' ' + su(); };
+function dur(s) { s = Math.round(s); if (s < 60) return s + 's'; const m = Math.floor(s / 60); return m < 60 ? m + 'm ' + (s % 60) + 's' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
+function setUnit(u) {
+  unit = u; localStorage.setItem('unit', u);
+  $('u-MBps').classList.toggle('on', u === 'MBps'); $('u-Mbps').classList.toggle('on', u === 'Mbps');
+  $('gu').textContent = su();
+}
+$('u-MBps').onclick = () => setUnit('MBps'); $('u-Mbps').onclick = () => setUnit('Mbps');
+
+/* ---------- files from Mac ---------- */
+async function loadItems() {
+  try { items = await (await fetch('api/items', { cache: 'no-store' })).json() || []; } catch (e) { return; }
+  $('items').innerHTML = items.length ? items.map(it => `<div class="row">
+      <span class="nm">${esc(it.name)}${it.isDir ? '.zip' : ''}</span><span class="sz num">${bytes(it.size)}</span>
+      <a class="btn primary" href="d/${it.id}" download>Save</a></div>`).join('')
+    : '<div class="empty">Nothing shared yet. Add files on the Mac.</div>';
+  $('all').hidden = items.length < 2;
+}
+$('all').onclick = () => items.forEach((it, i) => setTimeout(() => {
+  const a = document.createElement('a'); a.href = 'd/' + it.id; a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+}, i * 700));
+
+/* ---------- live activity (from the Mac's counters) ---------- */
+async function loadStatus() {
+  try {
+    const s = await (await fetch('api/status', { cache: 'no-store' })).json();
+    $('conn').classList.remove('off'); $('host').textContent = s.host;
+    uploadsOn = s.uploads;
+    $('pickBtn').classList.toggle('disabled', !uploadsOn);
+    $('upNote').textContent = uploadsOn ? '' : 'Uploads are turned off on the Mac.';
+    const dl = s.active.filter(t => t.dir === 'send');
+    $('liveBox').hidden = !dl.length;
+    $('live').innerHTML = dl.map(t => {
+      const pct = t.total > 0 ? Math.min(99.9, t.done / t.total * 100) : 0;
+      return `<div class="job"><div class="top"><span>${esc(t.name)}</span><span class="sp num">${spd(t.speed)}</span></div>
+        <div class="bar"><i style="width:${pct}%"></i></div>
+        <div class="info num"><span>${bytes(t.done)} of ${bytes(t.total)}</span><span>${t.eta >= 0 ? dur(t.eta) + ' left' : ''}</span></div></div>`;
+    }).join('');
+  } catch (e) { $('conn').classList.add('off'); $('host').textContent = 'Disconnected'; }
+}
+
+/* ---------- uploads ---------- */
+const queue = []; let uploading = false;
+$('pick').onchange = e => { for (const f of e.target.files) enqueue(f); e.target.value = ''; };
+function enqueue(file) {
+  const el = document.createElement('div'); el.className = 'job';
+  el.innerHTML = `<div class="top"><span></span><button class="text">Cancel</button></div><div class="bar recv"><i></i></div><div class="info num"><span class="st">Queued</span><span class="sp"></span></div>`;
+  el.querySelector('.top span').textContent = file.name;
+  $('jobs').prepend(el);
+  const job = { file, el, xhr: null, cancelled: false };
+  el.querySelector('button').onclick = () => { job.cancelled = true; if (job.xhr) job.xhr.abort(); el.querySelector('.st').textContent = 'Cancelled'; };
+  queue.push(job); pump();
+}
+async function pump() {
+  if (uploading) return; uploading = true;
+  while (queue.length) { const j = queue.shift(); if (!j.cancelled) await send(j); }
+  uploading = false;
+}
+function send(j) {
+  return new Promise(res => {
+    const bar = j.el.querySelector('i'), st = j.el.querySelector('.st'), sp = j.el.querySelector('.sp'), btn = j.el.querySelector('button');
+    const x = j.xhr = new XMLHttpRequest(); const t0 = performance.now();
+    let lastB = 0, lastT = t0, ema = 0;
+    x.open('PUT', 'up?name=' + encodeURIComponent(j.file.name));
+    x.upload.onprogress = e => {
+      const now = performance.now(), dt = (now - lastT) / 1000;
+      if (dt >= 0.4) { const inst = (e.loaded - lastB) / dt; ema = ema ? .6 * ema + .4 * inst : inst; lastB = e.loaded; lastT = now; }
+      bar.style.width = (e.loaded / e.total * 100) + '%';
+      st.textContent = `${bytes(e.loaded)} of ${bytes(e.total)}`;
+      sp.textContent = ema ? spd(ema) : '';
+    };
+    x.onload = () => {
+      const avg = j.file.size / ((performance.now() - t0) / 1000);
+      if (x.status === 204) { bar.style.width = '100%'; st.textContent = `Sent ${bytes(j.file.size)}`; sp.textContent = 'avg ' + spd(avg); }
+      else { st.textContent = x.status === 403 ? 'Uploads are off on the Mac' : 'Failed (' + x.status + ')'; sp.textContent = ''; }
+      btn.remove(); res();
+    };
+    x.onerror = () => { st.textContent = 'Connection lost'; sp.textContent = ''; btn.remove(); res(); };
+    x.onabort = () => { sp.textContent = ''; btn.remove(); res(); };
+    x.send(j.file);
+  });
+}
+
+/* ---------- speed test ---------- */
+let testing = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function gauge(bps, frac) { const v = sv(bps); $('gv').textContent = v.toFixed(v >= 100 ? 0 : 1); if (frac != null) $('gbar').style.width = (frac * 100) + '%'; }
+
+async function pingTest() {
+  const r = [];
+  for (let i = 0; i < 15; i++) {
+    const t = performance.now(); await fetch('ping?' + i + Math.random(), { cache: 'no-store' }); r.push(performance.now() - t);
+    $('gbar').style.width = (i / 15 * 100) + '%';
+  }
+  r.shift(); const s = r.slice().sort((a, b) => a - b), med = s[Math.floor(s.length / 2)];
+  let j = 0; for (let i = 1; i < r.length; i++) j += Math.abs(r[i] - r[i - 1]); j /= (r.length - 1);
+  return { ping: med, jitter: j };
+}
+
+// Generic timed measurement: sampler reads a byte counter every 250 ms.
+async function timed(secs, getBytes, run, stop) {
+  const t0 = performance.now(); let lastB = 0, lastT = t0, ema = 0, peak = 0;
+  const iv = setInterval(() => {
+    const now = performance.now(), b = getBytes(), inst = (b - lastB) / ((now - lastT) / 1000);
+    lastB = b; lastT = now; ema = ema ? .6 * ema + .4 * inst : inst;
+    if (now - t0 > 1000 && ema > peak) peak = ema;
+    gauge(ema, Math.min(1, (now - t0) / (secs * 1000)));
+  }, 250);
+  const timer = setTimeout(stop, secs * 1000);
+  await run();
+  clearTimeout(timer); clearInterval(iv);
+  return { avg: getBytes() / ((performance.now() - t0) / 1000), peak };
+}
+
+async function downTest(n, secs) {
+  let total = 0; const ctrl = new AbortController();
+  const worker = async () => {
+    try {
+      const r = await fetch('zero?mb=4096&r=' + Math.random(), { cache: 'no-store', signal: ctrl.signal });
+      const rd = r.body.getReader();
+      for (;;) { const { done, value } = await rd.read(); if (done) break; total += value.length; }
+    } catch (e) {}
+  };
+  return timed(secs, () => total, () => Promise.all(Array.from({ length: n }, worker)), () => ctrl.abort());
+}
+
+async function upTest(n, secs) {
+  let total = 0, stopped = false; const xhrs = new Set();
+  const blob = new Blob([new Uint8Array(16 << 20)]);
+  const worker = async () => {
+    while (!stopped) {
+      await new Promise(res => {
+        const x = new XMLHttpRequest(); xhrs.add(x); let prev = 0;
+        x.open('PUT', 'sink');
+        x.upload.onprogress = e => { total += e.loaded - prev; prev = e.loaded; };
+        x.onloadend = () => { xhrs.delete(x); res(); };
+        x.send(blob);
+      });
+    }
+  };
+  return timed(secs, () => total, () => Promise.all(Array.from({ length: n }, worker)), () => { stopped = true; xhrs.forEach(x => x.abort()); });
+}
+
+$('stBtn').onclick = async () => {
+  if (testing) return; testing = true;
+  const n = +$('streams').value, secs = +$('dur').value, btn = $('stBtn');
+  btn.disabled = true; btn.textContent = 'Testing…'; $('res').hidden = false;
+  ['rPing','rDn','rUp'].forEach(id => $(id).textContent = '-'); ['rJit','rDnP','rUpP'].forEach(id => $(id).textContent = '');
+  try {
+    $('phase').textContent = 'Measuring latency'; gauge(0, 0);
+    const p = await pingTest(); $('rPing').textContent = p.ping.toFixed(0) + ' ms'; $('rJit').textContent = 'jitter ' + p.jitter.toFixed(1) + ' ms';
+    $('phase').textContent = `Download, ${n} stream${n > 1 ? 's' : ''}`; gauge(0, 0);
+    const d = await downTest(n, secs); $('rDn').textContent = spd(d.avg); $('rDnP').textContent = 'peak ' + spd(d.peak);
+    await sleep(600);
+    $('phase').textContent = `Upload, ${n} stream${n > 1 ? 's' : ''}`; gauge(0, 0);
+    const u = await upTest(n, secs); $('rUp').textContent = spd(u.avg); $('rUpP').textContent = 'peak ' + spd(u.peak);
+    $('phase').textContent = 'Done'; gauge(d.avg, 1);
+    fetch('report', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pingMs: p.ping, jitterMs: p.jitter, down: d.avg, up: u.avg, peakDown: d.peak, peakUp: u.peak, streams: n }) }).catch(() => {});
+  } catch (e) { $('phase').textContent = 'Test failed. Check the connection to the Mac.'; }
+  btn.disabled = false; btn.textContent = 'Run again'; testing = false;
+};
+
+setUnit(unit);
+loadItems(); loadStatus();
+setInterval(loadItems, 3000);
+setInterval(loadStatus, 700);
+</script>
+</body>
+</html>

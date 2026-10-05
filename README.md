@@ -1,4 +1,4 @@
-# MacShare
+# Droply
 
 Local file transfer between a Mac and a phone. The Mac runs a small server and a
 control panel; the phone opens a web page (scan the QR code). No app is installed
